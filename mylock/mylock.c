@@ -24,22 +24,22 @@ int my_lock_init()
 int my_lock_trylock()
 {
 	int res = RES_OK;
-	if (mymutex == NULL){		
+	if (mymutex != NULL){		
 		if((res = pthread_mutex_trylock(mymutex) ) != RES_OK)
 			return RES_ERROR;
 		else return RES_OK;
 	}
-	else return RES_OK;		
+	else return RES_ERROR;		
 }
 int my_lock_tryunlock()
 {
 	int res = RES_OK;
-	if (mymutex == NULL){		
+	if (mymutex != NULL){		
 		if((res = pthread_mutex_unlock(mymutex) ) != RES_OK)
 			return RES_ERROR;
 		else return RES_OK;
 	}
-	else return RES_OK;
+	else return RES_ERROR;
 }
 
 void my_lock_destroy()
