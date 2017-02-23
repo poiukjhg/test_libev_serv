@@ -2,11 +2,9 @@
 #define MYLOCK_H
 #include <sys/mman.h>
 #include <pthread.h>  
-pthread_mutex_t* mymutex;//
-pthread_mutexattr_t mutexattr;//
 
-int my_lock_init();
-int my_lock_trylock();
-int my_lock_tryunlock();
-void my_lock_destroy();
+int my_lock_init(void **lock);
+int my_lock_trylock(void* lock);
+int my_lock_tryunlock(void* lock);
+void my_lock_destroy(void* lock);
 #endif
