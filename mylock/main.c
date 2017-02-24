@@ -5,7 +5,7 @@
 #include <sys/mman.h>
 #include <pthread.h>  
 #include "../mytype.h"
-#include "../myerror.h"
+#include "../mylogs.h"
 #include "mylock.h"
 
 int  main()
@@ -14,7 +14,7 @@ int  main()
 	int res = RES_ERROR;	
 	int *test_param = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, 
 					MAP_SHARED|MAP_ANONYMOUS , -1, 0);	
-	void* mylock = NULL;
+	static void* mylock = NULL;
 	my_lock_init(&mylock);
 	fd = fork();
 	if (fd <0){

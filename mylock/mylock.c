@@ -2,7 +2,7 @@
 #include <sys/stat.h>     
 #include <unistd.h>       
 #include "../mytype.h"
-#include "../myerror.h"
+#include "../mylogs.h"
 #include "mylock.h"
 
 

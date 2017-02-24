@@ -1,14 +1,16 @@
 PWD:=$(shell pwd)
 CC= gcc
 
-OBJS = main.o
-INCLIB   = -levent
+OBJS = main
+INCLIB   = -levent  -lpthread
 CFLAGS   += -Wall 
+OBJECTS = mylock.o main.o
 
-all: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) 
+all: $(OBJS) 
+$(OBJS):$(OBJECTS)
+	$(CC) $(CFLAGS) -o $@  $(OBJECTS) -L$(INCLIB)
 %.o: %.c 
 	$(CC) $(CFLAGS) -c $< -o $@	-L$(INCLIB)
 clean:
 	rm -rf *.o 
-endif
+	rm -f $(OBJS)
