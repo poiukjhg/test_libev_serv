@@ -26,6 +26,12 @@ void *my_w_handler_helper_set(w_buffer_cb_func *cb_func, write_handle_helper fun
 
 }
 
+void my_get_cur_status_helper_set(buffer_cb_func *buf_cb_func, get_cur_status_helper func){
+	if (  buf_cb_func != NULL &&  func != NULL)
+		buf_cb_func->get_cur_status = func;
+}
+
+
 my_event_base *my_base_init(){
 	my_event_base *my_ev_base;
 	my_ev_base = (my_ev_base *)malloc(sizeof(my_ev_base));
@@ -79,8 +85,12 @@ void my_read_cb(struct bufferevent *bev, void *ctx)
 	struct evbuffer *input, *output;  
 	char *request_line;  
 	size_t len;  
-	r_buffer_cb_func * r_func = (buffer_cb_func *)ctx->r_func;
-	
+	int index = -1;
+	int flow_status = -1;
+	r_buffer_cb_func * r_func_list = (buffer_cb_func *)ctx->r_func->head;
+	get_cur_status_helper get_cur_state = (buffer_cb_func *)ctx->get_cur_status;
+	read_handle_helper r_func_handler = NULL;
+		
 	input = bufferevent_get_input(bev);
 	size_t input_len = evbuffer_get_length(input);
 	while(1) {  
@@ -89,7 +99,12 @@ void my_read_cb(struct bufferevent *bev, void *ctx)
 			goto freebuf;
 		}  
 		else{  
-		            evbuffer_add(output, response, strlen(response));
+			flow_status = get_cur_state(request_line);
+			for(index = 0; index < flow_status; index++){
+				r_func_list = r_func_list->next;
+			}
+			r_func_handler = r_func_list->r_handle_test;
+			r_func_handler(request_line);
 		}    
 	}  
 freebuf: 
