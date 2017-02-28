@@ -1,9 +1,9 @@
 #ifndef MY_EV_HANDLE
 #define MY_EV_HANDLE
 
-typedef int( *read_handle_helper)(char *str);
-typedef int( *write_handle_helper)(char *str, void *buf);
-typedef int( *get_cur_status_helper)(char *str);
+typedef int ( *read_handle_helper)(char *str);
+typedef int ( *write_handle_helper)(char *str, void *buf);
+typedef int ( *get_cur_status_helper)(char *str);
 
 typedef struct r_buffer_cb_func{
 	read_handle_helper r_handle_test;
@@ -28,5 +28,9 @@ typedef struct my_event_base{
 	buffer_cb_func cb_func;
 }my_event_base;
 
-
+my_event_base *my_base_init();
+void my_r_handler_helper_addtail(r_buffer_cb_func **cb_func, read_handle_helper func);
+void my_w_handler_helper_addtail(w_buffer_cb_func **cb_func, write_handle_helper func);
+void *my_start_listen(int listen_fd, my_event_base * my_ev_base);
+void my_get_cur_status_helper_set(buffer_cb_func **buf_cb_func, get_cur_status_helper func);
 #endif

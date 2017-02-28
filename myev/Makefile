@@ -2,8 +2,8 @@ PWD:=$(shell pwd)
 CC= gcc
 
 OBJS = main
-INCLIB   = -levent  -lpthread
-CFLAGS   += -Wall 
+INCLIB   =  -lpthread -levent 
+CFLAGS   += -Wall -g
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
 
 all: $(OBJS) 
