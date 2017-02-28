@@ -11,13 +11,21 @@
 #include "../mylogs.h"
 #include "my_ev_handle.h"
 
-int test_read(char *str)
+int test_read(char *str, size_t recv_len, send_reply_helper send_func, send_reply_data *send_data)
 {
-	printf("receive %s\n\r", str);
-	return strlen(str);
+	int index = 0;
+	char *response_str = "200, ok\n\r";
+	for(index = 0; index < recv_len; index++){
+		printf("%c", str[index]);
+	}
+	printf("\n\rreceive len = %d\n\r", (int)recv_len);
+	send_data->response = response_str;
+	send_data->len = strlen(response_str);
+	send_func(send_data);
+	return recv_len;
 }
 int test_get_staus(char* str){
-	return 1;
+	return 0;
 }
 	
 int main(){
@@ -26,15 +34,15 @@ int main(){
 	int flags;
 	my_event_base *my_ev_base;
 	buffer_cb_func *my_cb_func;
-	r_buffer_cb_func* my_r_buffer_cb_func;
+	//r_buffer_cb_func* my_r_buffer_cb_func;
 	
 	my_ev_base = my_base_init();
 	if (my_ev_base == NULL){
 		exit(-1);
 	}
 	my_cb_func = &(my_ev_base->cb_func);
-	my_r_buffer_cb_func = my_cb_func->r_func;
-	my_r_handler_helper_addtail(&my_r_buffer_cb_func, test_read);	
+	//my_r_buffer_cb_func = my_cb_func->r_func;
+	my_r_handler_helper_addtail(&(my_cb_func->r_func), test_read);	
 	my_get_cur_status_helper_set(&my_cb_func, test_get_staus);	
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = 0;

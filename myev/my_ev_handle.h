@@ -1,7 +1,14 @@
 #ifndef MY_EV_HANDLE
 #define MY_EV_HANDLE
 
-typedef int ( *read_handle_helper)(char *str);
+typedef struct send_reply_data{
+	void *outbuf ;
+	char* response;
+	int len;
+}send_reply_data;
+
+typedef int ( *send_reply_helper)(send_reply_data *send_data);
+typedef int ( *read_handle_helper)(char *str, size_t recv_len, send_reply_helper send_func, send_reply_data *send_data);
 typedef int ( *write_handle_helper)(char *str, void *buf);
 typedef int ( *get_cur_status_helper)(char *str);
 

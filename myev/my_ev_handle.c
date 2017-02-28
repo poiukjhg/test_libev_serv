@@ -8,6 +8,26 @@
 #include "../mylogs.h"
 #include "../mytype.h"
 #include "my_ev_handle.h"
+
+char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char end_flag)
+{
+	char *new_buf = (char *)malloc(old_len+new_len+1);
+	if (new_buf == NULL)
+		return NULL;
+	memset(new_buf, 0, old_len+new_len+1);
+	memcpy(new_buf, old_buf, old_len);
+	memcpy(new_buf+old_len, new_str, new_len);
+	new_buf[old_len+new_len] = end_flag;
+	return new_buf;
+}
+
+int send_by_buffer(send_reply_data *send_data)
+{
+	struct evbuffer *outbuf = (struct evbuffer *)(send_data->outbuf);
+	evbuffer_add(outbuf, send_data->response, send_data->len);
+	return send_data->len;
+}
+
 void* my_event_init()
 {
 	struct event_base* base;	
@@ -84,6 +104,7 @@ void my_get_cur_status_helper_set(buffer_cb_func **buf_cb_func, get_cur_status_h
 my_event_base *my_base_init()
 {
 	my_event_base *my_ev_base;
+	buffer_cb_func *my_cb_func;
 	my_ev_base = (my_event_base *)malloc(sizeof(my_event_base));
 	if (my_ev_base == NULL){
 		handle_error("base init");
@@ -93,6 +114,8 @@ my_event_base *my_base_init()
 	if((my_ev_base->base = my_event_init()) == NULL){
 		return NULL;
 	}	
+	my_cb_func = &(my_ev_base->cb_func);
+	my_cb_func->r_func = NULL;
 	return my_ev_base;
 }
 
@@ -136,32 +159,52 @@ void my_write_cb(struct bufferevent *bev, void *ctx)
 
 void my_read_cb(struct bufferevent *bev, void *ctx)
 {  
-	struct evbuffer *input;  
+	struct evbuffer *input, *output;  
 	char *request_line;  
 	buffer_cb_func *my_cb_func = (buffer_cb_func *)ctx;
 	size_t len;  
 	int index = -1;
 	int flow_status = -1;	
+	send_reply_data send_data;
+	char* recv_buf = NULL;
+	size_t recv_len = 0;
+	
+	if (my_cb_func == NULL){
+		printf("%s:%d\n\r", __FILE__, __LINE__);
+		exit(-1);
+	}
 	r_buffer_cb_func *r_func_list = my_cb_func->r_func->head_func;
 	get_cur_status_helper get_cur_state = my_cb_func->get_cur_status;
 	read_handle_helper r_func_handler = NULL;
 		
 	input = bufferevent_get_input(bev);
+	output = bufferevent_get_output(bev);
 
 	while(1) {  
 		request_line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
-		if(request_line == '\0') {  
-			goto freebuf;
-		}  
-		else{  
-			flow_status = get_cur_state(request_line);
-			for(index = 0; index < flow_status; index++){
-				r_func_list = r_func_list->next_func;
+		//printf("recv len:%d, %s\n\r", len, request_line);
+		if (strlen(request_line) == 0){
+			if(recv_len == 0){
+				printf("recv NULL\n\r");
+				goto freebuf;
 			}
-			r_func_handler = r_func_list->r_handle_test;
-			r_func_handler(request_line);
-		}    
+			else
+				break;			
+		}	
+		recv_buf = relloc_buf(recv_buf, request_line, recv_len, len, '|');
+		if(request_line != NULL) {  
+		        free(request_line);
+			request_line = NULL;
+		}		
+		recv_len = recv_len+len+1;  		
 	}  
+	flow_status = get_cur_state(recv_buf);
+	for(index = 0; index < flow_status; index++){
+		r_func_list = r_func_list->next_func;
+	}
+	r_func_handler = r_func_list->r_handle_test;
+	send_data.outbuf = output;		
+	r_func_handler(recv_buf, recv_len, send_by_buffer, &send_data);	
 freebuf: 
 	if(request_line != NULL) {  
 	        free(request_line);
@@ -195,12 +238,14 @@ void my_accept_cb(int listen_fd, short event, void *arg)
 	struct sockaddr_storage ss;  
 	struct bufferevent *bev = NULL;  	
 	socklen_t slen = sizeof(ss);  
+	buffer_cb_func *my_cb_func;
 	int accept_fd = accept(listen_fd, (struct sockaddr*)&ss, &slen);  
 	if (accept_fd < 0) {  
 		handle_error("accept");  
 	}  
 	else  {  
-		bev = my_base_bufevent_ctrl(base, accept_fd, EV_READ|EV_WRITE, my_read_cb, my_write_cb, errorcb, &(my_ev_base->cb_func));	
+		my_cb_func = &(my_ev_base->cb_func);
+		bev = my_base_bufevent_ctrl(base, accept_fd, EV_READ|EV_WRITE, my_read_cb, my_write_cb, errorcb, my_cb_func);	
 		if (bev == NULL){
 			handle_error("bufferevent"); 
 		}
