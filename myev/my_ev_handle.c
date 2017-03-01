@@ -5,9 +5,15 @@
 #include <event2/keyvalq_struct.h>
 #include <event2/bufferevent.h>
 #include <string.h>
+#include <unistd.h>
 #include "../mylogs.h"
 #include "../mytype.h"
 #include "my_ev_handle.h"
+
+void default_callback_func(int listen_fd, short event, void *arg)
+{
+	return;
+}
 
 char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char end_flag)
 {
@@ -21,22 +27,14 @@ char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char en
 	return new_buf;
 }
 
-int send_by_buffer(send_reply_data *send_data)
+void* my_event_init(struct event_base* base)
 {
-	struct evbuffer *outbuf = (struct evbuffer *)(send_data->outbuf);
-	evbuffer_add(outbuf, send_data->response, send_data->len);
-	return send_data->len;
+	return NULL;
 }
 
-void* my_event_init()
+void my_event_destroy(struct event *event)
 {
-	struct event_base* base;	
-	base = event_base_new();
-	if (!base)  {
-		handle_error("ev base init");
-		return NULL;   	
-	}	
-	return (void*)base;
+	
 }
 
 void my_r_handler_helper_addtail(r_buffer_cb_func **cb_func, read_handle_helper func)
@@ -100,31 +98,45 @@ void my_get_cur_status_helper_set(buffer_cb_func **buf_cb_func, get_cur_status_h
 		my_buffer_cb_func->get_cur_status = func;
 }
 
+void my_base_loop(void *base)
+{
+	if (base != NULL){
+		event_base_dispatch(base); 
+	}
+}
 
-my_event_base *my_base_init()
+my_event_base *my_create_base()
 {
 	my_event_base *my_ev_base;
-	buffer_cb_func *my_cb_func;
+	//buffer_cb_func *my_cb_func;
+	
 	my_ev_base = (my_event_base *)malloc(sizeof(my_event_base));
 	if (my_ev_base == NULL){
 		handle_error("base init");
 		return NULL;
 	}
-	memset(my_ev_base, 0, sizeof(my_event_base));
-	if((my_ev_base->base = my_event_init()) == NULL){
-		return NULL;
+	memset(my_ev_base, 0, sizeof(my_event_base));		
+	my_ev_base->base = event_base_new();
+	if (my_ev_base->base == NULL)  {
+		handle_error("ev base init");
+		return NULL;   	
 	}	
-	my_cb_func = &(my_ev_base->cb_func);
-	my_cb_func->r_func = NULL;
+	//my_cb_func = &(my_ev_base->cb_func);
+	//my_cb_func->r_func = NULL;
+	//my_base_loop(my_ev_base->base);
 	return my_ev_base;
 }
 
-void my_event_destroy(my_event_base * my_ev_base)
+void my_base_init_loop_func(my_event_base *my_ev_base, event_callback_helper func, void* args)
 {
-	
+	struct event *my_timer_event;
+	struct timeval tv = {0, 100};
+	event_callback_helper cb_func = (func !=NULL)?func:default_callback_func;
+	my_timer_event = event_new(my_ev_base->base, -1, EV_PERSIST, cb_func, (void*)args);
+	evtimer_add(my_timer_event, &tv);	
 }
 
-void* my_base_event_ctrl(void *base, int fd, int flag, void (*func)(int, short, void *), void* args)
+void* my_base_fd_event_add(void *base, int fd, int flag, event_callback_helper func, void* args)
 {
 	struct event *event;
 	event = event_new(base, fd, flag, func, (void*)args);
@@ -132,7 +144,15 @@ void* my_base_event_ctrl(void *base, int fd, int flag, void (*func)(int, short, 
 	return (void*)event;
 }
 
-void* my_base_bufevent_ctrl(void *base, int fd, int flag,  bufferevent_data_cb r_func, bufferevent_data_cb w_func, void *err_func, void* cargs)
+void my_base_fd_event_remove(struct event *event)
+{
+	event_free(event);
+	return;
+}
+
+
+
+void* my_base_bufevent_new(void *base, int fd, int flag,  bufferevent_data_cb r_func, bufferevent_data_cb w_func, void *err_func, void* cargs)
 {
 	struct bufferevent *bev; 
 	
@@ -147,25 +167,46 @@ void* my_base_bufevent_ctrl(void *base, int fd, int flag,  bufferevent_data_cb r
 	return (void*)bev;
 }
 
-void my_event_loop(void *base)
+void my_base_bufevent_del(struct bufferevent *bev)
 {
-	event_base_dispatch(base); 
+	bufferevent_free(bev);
 }
 
 void my_write_cb(struct bufferevent *bev, void *ctx)
+{	
+	my_event_base *my_ev_base =  (my_event_base *)ctx;
+	int fd = bufferevent_getfd(bev);
+	if (my_ev_base->close_fd == fd ){
+		printf("write callback\n\r");		
+		my_base_bufevent_del(bev);
+		close(fd);
+		my_ev_base->close_fd = 0;
+	}
+}
+
+int my_send_by_buffer(read_userdata *read_data)
 {
-	
+	struct evbuffer *outbuf = (struct evbuffer *)(read_data->outbuf);
+	struct bufferevent *bev = read_data->bev;
+	my_event_base *my_ev_base =  (my_event_base *)read_data->user_data_tail;
+	evbuffer_add(outbuf, read_data->response, read_data->len);
+	if (read_data->if_close_fd == 1){
+		my_ev_base->close_fd = bufferevent_getfd(bev);
+	}
+	return read_data->len;
 }
 
 void my_read_cb(struct bufferevent *bev, void *ctx)
 {  
+	//printf("read callback\n\r");
 	struct evbuffer *input, *output;  
 	char *request_line;  
-	buffer_cb_func *my_cb_func = (buffer_cb_func *)ctx;
+	my_event_base *my_ev_base =  (my_event_base *)ctx;
+	buffer_cb_func *my_cb_func =&(my_ev_base->cb_func);
 	size_t len;  
 	int index = -1;
 	int flow_status = -1;	
-	send_reply_data send_data;
+	read_userdata read_data = {0};
 	char* recv_buf = NULL;
 	size_t recv_len = 0;
 	
@@ -203,8 +244,10 @@ void my_read_cb(struct bufferevent *bev, void *ctx)
 		r_func_list = r_func_list->next_func;
 	}
 	r_func_handler = r_func_list->r_handle_test;
-	send_data.outbuf = output;		
-	r_func_handler(recv_buf, recv_len, send_by_buffer, &send_data);	
+	read_data.outbuf = output;		
+	read_data.bev = bev;
+	read_data.user_data_tail = (void *)my_ev_base;
+	r_func_handler(recv_buf, recv_len, my_send_by_buffer, &read_data);	
 freebuf: 
 	if(request_line != NULL) {  
 	        free(request_line);
@@ -238,14 +281,15 @@ void my_accept_cb(int listen_fd, short event, void *arg)
 	struct sockaddr_storage ss;  
 	struct bufferevent *bev = NULL;  	
 	socklen_t slen = sizeof(ss);  
-	buffer_cb_func *my_cb_func;
+	if (base == NULL){
+		return;
+	}
 	int accept_fd = accept(listen_fd, (struct sockaddr*)&ss, &slen);  
 	if (accept_fd < 0) {  
 		handle_error("accept");  
 	}  
 	else  {  
-		my_cb_func = &(my_ev_base->cb_func);
-		bev = my_base_bufevent_ctrl(base, accept_fd, EV_READ|EV_WRITE, my_read_cb, my_write_cb, errorcb, my_cb_func);	
+		bev = my_base_bufevent_new(base, accept_fd, EV_READ|EV_WRITE, my_read_cb, my_write_cb, errorcb, my_ev_base);	
 		if (bev == NULL){
 			handle_error("bufferevent"); 
 		}
@@ -256,9 +300,18 @@ void* my_start_listen(int listen_fd, my_event_base * my_ev_base)
 {
 	struct event_base *base = my_ev_base->base;
 	struct event *event;
-	event = my_base_event_ctrl(base, listen_fd, EV_READ|EV_PERSIST, my_accept_cb, (void *)my_ev_base);
-	my_event_loop(base);
+	if(CHECK_FD_IS_SET(my_ev_base->fd_map, listen_fd) >0){
+		//printf("already add listen fd\n\r");
+		return NULL;
+	}
+	event = my_base_fd_event_add(base, listen_fd, EV_READ|EV_PERSIST, my_accept_cb, (void *)my_ev_base);	
+	SET_FD_INTO_BITMAP(my_ev_base->fd_map, listen_fd);	
 	return (void*)event;
 }
 
+void my_stop_listen(void *event)
+{
+	my_base_fd_event_remove((struct event *)event);
+	return;
+}
 
