@@ -180,8 +180,7 @@ void default_loop_callback_func(int fd, short event, void *arg)
 
 my_base *server_init()
 {
-	my_base *my_bs;
-	
+	my_base *my_bs;	
 	my_bs = (my_base *)malloc(sizeof(my_base));
 	if (my_bs == NULL){
 		handle_error("base init");
@@ -193,6 +192,7 @@ my_base *server_init()
 		handle_error("ev base init");
 		return NULL;   	
 	}	
+	my_lock_init(&(my_bs->lock));
 	return my_bs;
 }	
 
