@@ -10,4 +10,8 @@
 		perror(msg); \
 		exit(EXIT_FAILURE); \
 	} while (0)
+#define log_output(msg)  \
+	do { \
+		printf("%s\n\r", msg); \
+	} while (0)	
 #endif		   	
