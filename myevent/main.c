@@ -11,7 +11,7 @@
 #include "../mylogs.h"
 #include "my_event_handler.h"
 #include "mylock.h"
-int init_listen()
+int init_listen(int port)
 {
 	int listen_fd = -1;
 	struct sockaddr_in sin; 
@@ -19,7 +19,7 @@ int init_listen()
 	
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = 0;
-	sin.sin_port = htons(8000);
+	sin.sin_port = htons(port);
 	listen_fd = socket(AF_INET, SOCK_STREAM, 0);	
 	if ((flags = fcntl(listen_fd, F_GETFL, NULL)) < 0) {
 		handle_error("fcntl get");
@@ -32,7 +32,7 @@ int init_listen()
 		}
 	}                      
 	if(bind(listen_fd, (struct sockaddr *)&sin, sizeof(sin))<0){
-		handle_error("bind");
+		handle_error("bind port");
 		exit(-1);
 	}
 	if( listen(listen_fd, 16) == -1){  
@@ -59,7 +59,6 @@ int test_read_event(char *recv_str, size_t recv_len, read_userdata *read_data)
 int main()
 {
 	int listen_fd = -1;	
-	listen_fd = init_listen();
 	my_base *bs = NULL;
 	void *lock = NULL;
 	my_lock_init(&lock);
@@ -69,9 +68,16 @@ int main()
 		log_output("base c is NULL");
 		exit(-1);
 	}
+	listen_fd = init_listen(8000);
+	printf("bind 8000\n\r");	
 	server_listen_fd_add(bs, listen_fd);
-	server_loop_cb_set(bs);
 	server_rfunc_add(bs, listen_fd, test_read_event);
+	
+	listen_fd = init_listen(9000);
+	printf("bind 9000\n\r");
+	server_listen_fd_add(bs, listen_fd);
+	server_rfunc_add(bs, listen_fd, test_read_event);	
+	server_loop_cb_set(bs);	
 	server_start(bs);	
 	return 0;	
 }

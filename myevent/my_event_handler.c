@@ -213,7 +213,7 @@ void server_listen_fd_add(my_base *my_bs, int listen_fd)
 	else{
 		tail_listen_nod = my_bs->listen_fd_list;
 		cur_listen_nod->head = my_bs->listen_fd_list->head;
-		while(tail_listen_nod != NULL)
+		while(tail_listen_nod->next != NULL)
 			tail_listen_nod = tail_listen_nod->next;
 		tail_listen_nod->next = cur_listen_nod;		
 	}
