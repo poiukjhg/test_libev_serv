@@ -66,7 +66,7 @@ void my_read_cb(struct bufferevent *bev, void *ctx)
 	}  
 	while(rd_buf_cb_nod != NULL){
 		r_handler = rd_buf_cb_nod->r_handler;
-		if(r_handler(request_line, recv_len, read_ud) == SEND_RESPONSE){
+		if(r_handler(recv_buf, recv_len, read_ud) == SEND_RESPONSE){
 			evbuffer_add(output, read_ud->response, read_ud->send_len);
 		}
 		rd_buf_cb_nod = rd_buf_cb_nod->next_func;
@@ -166,6 +166,7 @@ void my_try_to_listen(my_base *my_bs)
 			while(cur_listen_fd){
 				ev = event_new(my_bs->base, cur_listen_fd->fd, EV_READ|EV_PERSIST, my_accept_cb, (void*)my_bs);
 				event_add(ev, NULL); 
+				cur_listen_fd = cur_listen_fd->next;
 			}
 			my_bs->is_locked = 1;
 		}		
@@ -174,7 +175,7 @@ void my_try_to_listen(my_base *my_bs)
 
 void default_loop_callback_func(int fd, short event, void *arg)
 {	
-	my_base *my_bs = (my_base *)my_bs;	
+	my_base *my_bs = (my_base *)arg;	
 	my_try_to_listen(my_bs);	
 }
 
@@ -192,7 +193,7 @@ my_base *server_init()
 		handle_error("ev base init");
 		return NULL;   	
 	}	
-	my_lock_init(&(my_bs->lock));
+	
 	return my_bs;
 }	
 
@@ -234,10 +235,11 @@ void server_rfunc_add(my_base *my_bs, int fd, read_handle_helper func)
 	while(cur_listen_nod != NULL){
 		if (cur_listen_nod->fd == fd)
 			break;
-		cur_listen_nod = cur_listen_nod->next;	
+		cur_listen_nod = cur_listen_nod->next;
+		if(cur_listen_nod == NULL)
+			return ;		
 	}
-	if(cur_listen_nod->next == NULL)
-		return ;
+
 	read_buf_cb_node = (bufread_cb_list *)malloc(sizeof(bufread_cb_list));
 	read_buf_cb_node->r_handler = func;
 	read_buf_cb_node->next_func = NULL;

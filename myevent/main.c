@@ -10,7 +10,7 @@
 #include "../mytype.h"
 #include "../mylogs.h"
 #include "my_event_handler.h"
-
+#include "mylock.h"
 int init_listen()
 {
 	int listen_fd = -1;
@@ -53,7 +53,7 @@ int test_read_event(char *recv_str, size_t recv_len, read_userdata *read_data)
 	read_data->response = response_str;
 	read_data->send_len = strlen(response_str);
 	read_data->close_fd = 1;
-	return recv_len;
+	return SEND_RESPONSE;
 }
 
 int main()
@@ -61,7 +61,10 @@ int main()
 	int listen_fd = -1;	
 	listen_fd = init_listen();
 	my_base *bs = NULL;
+	void *lock = NULL;
+	my_lock_init(&lock);
 	bs = server_init();	
+	bs->lock = lock;
 	if (bs == NULL){
 		log_output("base c is NULL");
 		exit(-1);
