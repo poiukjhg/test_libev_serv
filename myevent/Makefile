@@ -6,14 +6,15 @@ OBJS = main
 INC  = -I$(PWD)/../mylock
 INCLIB   =  -lpthread -levent 
 CFLAGS   += -Wall -g
-OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
 LOCK_OBJECTS = $(filter-out main.o, $(notdir $(patsubst %.c,%.o,$(wildcard $(LOCK_DIR)/*.c))))
+LOCK_SRC = $(filter-out $(LOCK_DIR)/main.c, $(wildcard $(LOCK_DIR)/*.c))
+OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c)) $(LOCK_OBJECTS)
 
 all: $(OBJS) 
 
-$(OBJS):$(OBJECTS) $(LOCK_OBJECTS) 
-	$(CC) $(CFLAGS) -o $@  $(OBJECTS) $(LOCK_OBJECTS) $(INCLIB) $(INC)
-$(LOCK_OBJECTS): $(filter-out $(LOCK_DIR)/main.c, $(wildcard $(LOCK_DIR)/*.c))
+$(OBJS):$(OBJECTS)
+	$(CC) $(CFLAGS) -o $@  $(OBJECTS) $(INCLIB) $(INC)
+$(LOCK_OBJECTS): $(LOCK_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@	$(INCLIB)		
 %.o: %.c 
 	$(CC) $(CFLAGS) -c $< -o $@	$(INCLIB) $(INC)

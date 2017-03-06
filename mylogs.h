@@ -8,6 +8,7 @@
 #define handle_error(msg)  \
 	do { \
 		perror(msg); \
+		printf("exit\n\r"); \
 		exit(EXIT_FAILURE); \
 	} while (0)
 #define log_output(msg)  \

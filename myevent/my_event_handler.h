@@ -16,6 +16,7 @@ typedef struct my_base{
 	struct event_base* base;	
 	char is_locked;
 	void* lock;	
+	int accept_fd_num;
 	base_listenfd_list *listen_fd_list;	
 }my_base;
 

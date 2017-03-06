@@ -5,12 +5,13 @@
 #include <event2/keyvalq_struct.h>
 #include <event2/bufferevent.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include "../mylogs.h"
 #include "../mytype.h"
 #include "mylock.h"
 #include "my_event_handler.h"
-
+#include <sys/wait.h>
 char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char end_flag)
 {
 	char *new_buf = (char *)malloc(old_len+new_len+1);
@@ -36,7 +37,8 @@ void my_read_cb(struct bufferevent *bev, void *ctx)
 	size_t recv_len = 0;
 	bufread_cb_list *rd_buf_cb_nod= NULL;
 	read_handle_helper r_handler = NULL;
-	
+
+	//printf("read callback\n\r");
 	while(cur_listen_nod->fd != read_ud->listen_fd){
 		cur_listen_nod = cur_listen_nod->next;
 		if (cur_listen_nod == NULL)
@@ -82,7 +84,7 @@ freebuf:
 	        free(recv_buf);
 		recv_buf = NULL;
 	}		
-	my_try_to_listen(my_bs);
+	//my_try_to_listen(my_bs);
 }
 
 void my_write_cb(struct bufferevent *bev, void *ctx)
@@ -91,10 +93,11 @@ void my_write_cb(struct bufferevent *bev, void *ctx)
 	int fd = bufferevent_getfd(bev);	
 	my_base *my_bs = read_ud->my_bs;
 	if (read_ud->close_fd == 1 ){
-		printf("write callback\n\r");		
-		bufferevent_free(bev);
+		//printf("write callback pid = %d\n\r", (int)getpid());		
+		bufferevent_free(bev);	
+		free(ctx);
 		close(fd);
-		free(read_ud);
+		my_bs->accept_fd_num--;
 	}
 	my_try_to_listen(my_bs);
 }
@@ -127,16 +130,20 @@ void my_accept_cb(int listen_fd, short event, void *arg)
 	if(read_ud == NULL){  
 		handle_error("read_userdata");  
 	}  
+	memset(read_ud, 0, sizeof(read_userdata));
 	int accept_fd = accept(listen_fd, (struct sockaddr*)&ss, &slen);  
+	//printf("accept\n\r");
 	if (accept_fd < 0) {  
 		handle_error("accept");  
 	}  
 	else  {  
+		my_bs->accept_fd_num++;
 		read_ud->my_bs = my_bs;
 		read_ud->listen_fd = listen_fd;
 		read_ud->accept_fd = accept_fd;
 		evutil_make_socket_nonblocking(accept_fd);  
 		bev = bufferevent_socket_new(base, (evutil_socket_t)accept_fd, BEV_OPT_CLOSE_ON_FREE); 
+		
 		if (!bev)  {
 			handle_error("bufferevent new");
 			return;   	
@@ -151,21 +158,43 @@ void my_try_to_listen(my_base *my_bs)
 {
 	base_listenfd_list *cur_listen_fd = my_bs->listen_fd_list;
 	struct event * ev;
-	if(my_bs->is_locked == 1)
-		my_lock_tryunlock(my_bs->lock);
-	if(my_lock_trylock(my_bs->lock) == RES_ERROR){
+	char res=RES_ERROR;
+	if(my_bs->is_locked == 1){
+		my_lock_tryunlock(my_bs->lock);		
+	}
+	
+	if (my_bs->accept_fd_num>50){
+		printf("pid = %d overload\n\r", (int)getpid());
 		if(my_bs->is_locked == 1){
 			while(cur_listen_fd){
 				event_free(cur_listen_fd->ev);
+				cur_listen_fd->ev = NULL;
+				cur_listen_fd = cur_listen_fd->next;
+			}
+			my_bs->is_locked = 0;
+		}
+		return;
+	}
+	
+	res = my_lock_trylock(my_bs->lock);
+	if(res  == RES_ERROR){
+		if(my_bs->is_locked == 1){
+			//printf("pid = %d free event\n\r", (int)getpid());
+			while(cur_listen_fd){
+				event_free(cur_listen_fd->ev);
+				cur_listen_fd->ev = NULL;
+				cur_listen_fd = cur_listen_fd->next;
 			}
 			my_bs->is_locked = 0;
 		}
 	}
 	else{
 		if(my_bs->is_locked == 0){
+			printf("pid = %d getlock\n\r", (int)getpid());
 			while(cur_listen_fd){
 				ev = event_new(my_bs->base, cur_listen_fd->fd, EV_READ|EV_PERSIST, my_accept_cb, (void*)my_bs);
 				event_add(ev, NULL); 
+				cur_listen_fd->ev = ev;
 				cur_listen_fd = cur_listen_fd->next;
 			}
 			my_bs->is_locked = 1;
@@ -222,7 +251,7 @@ void server_listen_fd_add(my_base *my_bs, int listen_fd)
 void server_loop_cb_set(my_base *my_bs)
 {
 	struct event *my_timer_event;
-	struct timeval tv = {0, 100};
+	struct timeval tv = {0, 50};
 	my_timer_event = event_new(my_bs->base, -1, EV_PERSIST, default_loop_callback_func, (void*)my_bs);
 	evtimer_add(my_timer_event, &tv);	
 }
@@ -262,7 +291,10 @@ void server_wfunc_add(my_base *my_bs, int fd, write_handle_helper func)
 }
 void server_start(my_base *my_bs)
 {
+	int  res;
+	printf("loop start %d\n\r", (int)getpid());
 	if (my_bs->base != NULL){
-		event_base_dispatch(my_bs->base); 
+		res = event_base_dispatch(my_bs->base); 
+		printf("loop back %d, res = %d\n\r", (int)getpid(), res);
 	}
 }
