@@ -10,9 +10,13 @@
 #include <string.h>
 #include "mytype.h"
 #include "mylogs.h"
-#include "my_event_handler.h"
 #include "mylock.h"
-
+#define USEING_EV
+#ifdef USEING_EV
+#include "my_ev_handler.h"
+#else
+#include "my_event_handler.h"
+#endif
 #define PROCESS_NUM 2
 
 int init_listen(int port)
