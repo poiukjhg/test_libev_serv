@@ -126,7 +126,9 @@ void my_write_cb(EV_P, ev_io *w, int revents)
 		free(read_ud->w_ev);
 		ev_io_stop (read_ud->my_bs->base, read_ud->r_ev);		
 		free(read_ud->r_ev);
+		read_ud->my_bs->accept_fd_num--;		
 		free(read_ud);
+
 	}
 	
 

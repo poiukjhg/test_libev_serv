@@ -14,8 +14,8 @@ EVENT_OBJECTS = $(filter-out main.o, $(notdir $(patsubst %.c,%.o,$(wildcard $(EV
 EVENT_SRC = $(filter-out $(EVENT_DIR)/main.c, $(wildcard $(EVENT_DIR)/*.c))
 EV_OBJECTS = $(filter-out main.o, $(notdir $(patsubst %.c,%.o,$(wildcard $(EV_DIR)/*.c))))
 EV_SRC = $(filter-out $(EV_DIR)/main.c, $(wildcard $(EV_DIR)/*.c))
-OBJECTS = $(LOCK_OBJECTS) $(EVENT_OBJECTS) $(EV_OBJECTS) main.o
-
+OBJECTS = $(LOCK_OBJECTS)  $(EV_OBJECTS) main.o
+#OBJECTS = $(LOCK_OBJECTS)  $(EVENT_OBJECTS) main.o
 
 all: $(OBJS) 
 $(OBJS):$(OBJECTS)

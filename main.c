@@ -54,11 +54,11 @@ int test_read_event(char *recv_str, size_t recv_len, read_userdata *read_data)
 {
 	int index = 0;
 	char *response_str = "HTTP/1.1 200 ok\n\r\n\r";
-	/*
+	
 	for(index = 0; index < recv_len; index++){
-		printf("%c", recv_str[index]);
+		log_output("%c", recv_str[index]);
 	}
-	*/
+	
 	//printf("receive len = %d pid = %d accept = %d\n\r", (int)recv_len, (int)getpid(), read_data->my_bs->accept_fd_num);
 	read_data->response = response_str;
 	read_data->send_len = strlen(response_str);

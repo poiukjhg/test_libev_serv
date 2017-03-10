@@ -5,6 +5,7 @@
 #include<stdio.h>
 
 #define DEBUG
+#undef DEBUG
 #define handle_error(msg)  \
 	do { \
 		perror(msg); \
@@ -13,6 +14,7 @@
 	} while (0)
 	
 #ifdef DEBUG	
+
 #define log_output(format, ...)  \
 	do { \
 		printf (format, ##__VA_ARGS__); \

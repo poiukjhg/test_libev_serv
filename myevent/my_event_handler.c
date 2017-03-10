@@ -98,6 +98,7 @@ void my_write_cb(struct bufferevent *bev, void *ctx)
 		free(ctx);
 		close(fd);
 		my_bs->accept_fd_num--;
+		free(read_ud);
 	}
 	my_try_to_listen(my_bs);
 }
