@@ -83,7 +83,7 @@ int main()
 			bs = server_init();	
 			bs->lock = lock;
 			if (bs == NULL){
-				log_output("base c is NULL");
+				printf("base c is NULL\n\r");
 				exit(-1);
 			}
 			server_listen_fd_add(bs, listen_fd);

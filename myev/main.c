@@ -46,12 +46,12 @@ int test_read_event(char *recv_str, size_t recv_len, read_userdata *read_data)
 {
 	int index = 0;
 	char *response_str = "HTTP/1.1 200 ok\n\r\n\r";
-	/*
+	
 	for(index = 0; index < recv_len; index++){
 		printf("%c", recv_str[index]);
 	}
 	printf("\n\rreceive len = %d\n\r", (int)recv_len);
-	*/
+	
 	read_data->response = response_str;
 	read_data->send_len = strlen(response_str);
 	read_data->close_fd = 1;
@@ -67,19 +67,20 @@ int main()
 	bs = server_init();	
 	bs->lock = lock;
 	if (bs == NULL){
-		log_output("base c is NULL");
+		printf("base c is NULL\n\r");
 		exit(-1);
 	}
-	listen_fd = init_listen(8000);
-	printf("bind 8000\n\r");	
-	server_listen_fd_add(bs, listen_fd);
-	server_rfunc_add(bs, listen_fd, test_read_event);
+	//listen_fd = init_listen(8000);
+	//printf("bind 8000\n\r");	
+	//server_listen_fd_add(bs, listen_fd);
+	//server_rfunc_add(bs, listen_fd, test_read_event);
 	
 	listen_fd = init_listen(9000);
 	printf("bind 9000\n\r");
 	server_listen_fd_add(bs, listen_fd);
 	server_rfunc_add(bs, listen_fd, test_read_event);	
-	server_loop_cb_set(bs);	
+
+	server_loop_cb_set(bs);
 	server_start(bs);	
 	return 0;	
 }

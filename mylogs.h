@@ -4,15 +4,23 @@
 #include<stdlib.h>
 #include<stdio.h>
 
-
+#define DEBUG
 #define handle_error(msg)  \
 	do { \
 		perror(msg); \
 		printf("exit\n\r"); \
 		exit(EXIT_FAILURE); \
 	} while (0)
-#define log_output(msg)  \
+	
+#ifdef DEBUG	
+#define log_output(format, ...)  \
 	do { \
-		printf("%s\n\r", msg); \
+		printf (format, ##__VA_ARGS__); \
 	} while (0)	
-#endif		   	
+#else
+#define log_output(msg) \
+	do { \
+	} while (0)	
+#endif
+
+#endif

@@ -1,6 +1,6 @@
 #ifndef MY_EVENT_HANDLE
 #define MY_EVENT_HANDLE
-
+#include <ev.h>
 #define SEND_RESPONSE 1
 
 typedef struct bufread_cb_list bufread_cb_list;
@@ -22,14 +22,14 @@ typedef struct my_base{
 
 typedef struct read_userdata{
 	my_base* my_bs;
-	void *read_buf ;
-	void *write_buf ;	
 	char* response;
 	int listen_fd;
 	int accept_fd;
 	int recv_len;
 	int send_len;	
 	char close_fd;
+	ev_io *r_ev;
+	ev_io *w_ev;
 }read_userdata;
 
 typedef struct write_userdata{
