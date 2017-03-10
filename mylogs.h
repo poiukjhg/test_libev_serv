@@ -20,7 +20,7 @@
 		printf (format, ##__VA_ARGS__); \
 	} while (0)	
 #else
-#define log_output(msg) \
+#define log_output(format, ...) \
 	do { \
 	} while (0)	
 #endif
