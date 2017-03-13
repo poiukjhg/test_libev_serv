@@ -21,6 +21,8 @@ char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char en
 	memcpy(new_buf, old_buf, old_len);
 	memcpy(new_buf+old_len, new_str, new_len);
 	new_buf[old_len+new_len] = end_flag;
+	free(old_buf);
+	old_buf = NULL;
 	return new_buf;
 }
 

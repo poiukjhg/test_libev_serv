@@ -37,6 +37,8 @@ char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char en
 	memcpy(new_buf, old_buf, old_len);
 	memcpy(new_buf+old_len, new_str, new_len);
 	new_buf[old_len+new_len] = end_flag;
+	free(old_buf);
+	old_buf = NULL;
 	return new_buf;
 }
 
@@ -63,13 +65,15 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 		memset(tmp_read_buf, '0', BUFFER_SIZE/2);
 		tmp_read_len = read(w->fd, tmp_read_buf, BUFFER_SIZE/2);
 		if (tmp_read_len < 0 ){
+			free(tmp_read_buf);
 			if(errno == EAGAIN || errno == EWOULDBLOCK){
-				free(tmp_read_buf);
 				tmp_read_buf = NULL;				
 				break;
 			}
-			else
+			else{
+				
 				handle_error("read");
+			}
 		}
 		else if(tmp_read_len == 0){
 			free(tmp_read_buf);
@@ -81,6 +85,8 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 			read_len = read_len+tmp_read_len;
 		}
 	}
+	if(tmp_read_buf)
+		free(tmp_read_buf);
 	log_output("recv from fd %d\n\r", w->fd);
 	while(cur_listen_nod->fd != read_ud->listen_fd){
 		cur_listen_nod = cur_listen_nod->next;
@@ -111,9 +117,13 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 					tmp_write_buf = tmp_write_buf +tmp_write_len;
 				}
 			}
+			
+			
 		}
 		rd_buf_cb_nod = rd_buf_cb_nod->next_func;
 	}	
+	if(read_buf)
+		free(read_buf);
 }
 
 void my_write_cb(EV_P, ev_io *w, int revents)
