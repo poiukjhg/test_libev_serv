@@ -70,6 +70,8 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 				tmp_read_buf = NULL;				
 				break;
 			}
+		       if (errno == EINTR)
+			      continue;
 			else{
 				
 				handle_error("read");
@@ -104,7 +106,9 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 				tmp_write_len = write(w->fd, tmp_write_buf, write_len);
 				if(tmp_write_len <0){
 					if(errno == EAGAIN || errno ==EWOULDBLOCK)
-						continue;
+						break;
+					if (errno == EINTR)
+			      			continue;
 					else
 						handle_error("write");
 				}
