@@ -30,15 +30,26 @@
 
 char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char end_flag)
 {
-	char *new_buf = (char *)malloc(old_len+new_len+1);
-	if (new_buf == NULL)
-		return NULL;
-	memset(new_buf, 0, old_len+new_len+1);
-	memcpy(new_buf, old_buf, old_len);
-	memcpy(new_buf+old_len, new_str, new_len);
-	new_buf[old_len+new_len] = end_flag;
-	free(old_buf);
-	old_buf = NULL;
+	int len = old_len+new_len+1;
+	char *new_buf = old_buf;
+	if (new_buf != NULL && len < BUFFER_SIZE){
+		new_buf = old_buf;
+		memcpy(new_buf+old_len, new_str, new_len);
+		new_buf[old_len+new_len] = end_flag;
+	}
+	else {
+		new_buf = (char *)malloc(old_len+new_len+1);
+		if (new_buf == NULL){
+			free(old_buf);
+			return NULL;
+		}
+		memset(new_buf, 0, old_len+new_len+1);
+		memcpy(new_buf, old_buf, old_len);
+		memcpy(new_buf+old_len, new_str, new_len);
+		free(old_buf);
+		old_buf = NULL;		
+	}
+	new_buf[old_len+new_len] = end_flag;	
 	return new_buf;
 }
 
@@ -68,7 +79,7 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 			free(tmp_read_buf);
 			if(errno == EAGAIN || errno == EWOULDBLOCK){
 				tmp_read_buf = NULL;				
-				break;
+				goto fail;
 			}
 		       if (errno == EINTR)
 			      continue;
@@ -106,7 +117,7 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 				tmp_write_len = write(w->fd, tmp_write_buf, write_len);
 				if(tmp_write_len <0){
 					if(errno == EAGAIN || errno ==EWOULDBLOCK)
-						break;
+						goto fail;
 					if (errno == EINTR)
 			      			continue;
 					else
@@ -120,12 +131,13 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 					write_len = write_len -tmp_write_len;
 					tmp_write_buf = tmp_write_buf +tmp_write_len;
 				}
-			}
-			
-			
+			}						
 		}
 		rd_buf_cb_nod = rd_buf_cb_nod->next_func;
 	}	
+fail:	
+	if(tmp_read_buf)
+		free(tmp_read_buf);	
 	if(read_buf)
 		free(read_buf);
 }
@@ -160,14 +172,23 @@ void my_accept_cb(EV_P, ev_io *w, int revents)
 	ev_io *w_ev =  (ev_io *)malloc(sizeof(ev_io));;
 	struct sockaddr_storage ss;   	
 	socklen_t slen = sizeof(ss);  
+	int accept_fd;
 	read_userdata *read_ud = (read_userdata *)malloc(sizeof(read_userdata));
 	if(read_ud == NULL){  
 		handle_error("read_userdata");  
 	}  
 	memset(read_ud, 0, sizeof(read_userdata));
-	int accept_fd = accept(w->fd, (struct sockaddr*)&ss, &slen);  
+	while (1) {
+		accept_fd = accept(w->fd, (struct sockaddr*)&ss, &slen); 
+		if (accept_fd == -1) {
+			if (errno == EINTR)
+				continue;
+			else
+				break;
+		}	
+	}	
 	if (accept_fd < 0) {  		 
-		if (accept_fd == EAGAIN || accept_fd == EWOULDBLOCK){
+		if (errno == EAGAIN || errno == EWOULDBLOCK){
 			return;
 		}
 		else

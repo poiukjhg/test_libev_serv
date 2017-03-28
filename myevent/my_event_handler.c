@@ -12,17 +12,30 @@
 #include "mylock.h"
 #include "my_event_handler.h"
 #include <sys/wait.h>
+
+#define BUFFER_SIZE 8192
 char* relloc_buf(char* old_buf, char* new_str, int old_len, int new_len, char end_flag)
 {
-	char *new_buf = (char *)malloc(old_len+new_len+1);
-	if (new_buf == NULL)
-		return NULL;
-	memset(new_buf, 0, old_len+new_len+1);
-	memcpy(new_buf, old_buf, old_len);
-	memcpy(new_buf+old_len, new_str, new_len);
-	new_buf[old_len+new_len] = end_flag;
-	free(old_buf);
-	old_buf = NULL;
+	int len = old_len+new_len+1;
+	char *new_buf = old_buf;
+	if (new_buf != NULL && len < BUFFER_SIZE){
+		new_buf = old_buf;
+		memcpy(new_buf+old_len, new_str, new_len);
+		new_buf[old_len+new_len] = end_flag;
+	}
+	else {
+		new_buf = (char *)malloc(old_len+new_len+1);
+		if (new_buf == NULL){
+			free(old_buf);
+			return NULL;
+		}
+		memset(new_buf, 0, old_len+new_len+1);
+		memcpy(new_buf, old_buf, old_len);
+		memcpy(new_buf+old_len, new_str, new_len);
+		free(old_buf);
+		old_buf = NULL;		
+	}
+	new_buf[old_len+new_len] = end_flag;	
 	return new_buf;
 }
 
@@ -134,10 +147,22 @@ void my_accept_cb(int listen_fd, short event, void *arg)
 		handle_error("read_userdata");  
 	}  
 	memset(read_ud, 0, sizeof(read_userdata));
-	int accept_fd = accept(listen_fd, (struct sockaddr*)&ss, &slen);  
-	//printf("accept\n\r");
-	if (accept_fd < 0) {  
-		handle_error("accept");  
+	int accept_fd = -1;	
+	while (1) {
+		accept_fd = accept(listen_fd, (struct sockaddr*)&ss, &slen); 
+		if (accept_fd == -1) {
+			if (errno == EINTR)
+				continue;
+			else
+				break;
+		}	
+	}	
+	if (accept_fd < 0) {  		 
+		if (errno == EAGAIN || errno == EWOULDBLOCK){
+			return;
+		}
+		else
+			handle_error("accept"); 
 	}  
 	else  {  
 		my_bs->accept_fd_num++;

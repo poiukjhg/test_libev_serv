@@ -30,6 +30,6 @@ $(EV_OBJECTS):$(EV_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@	$(INCLIB) $(INCFILE)			
 clean:
 	rm -rf $(LOCK_DIR)/*.o $(EVENT_DIR)/*.o $(EV_DIR)/*.o *.o
-	rm -f $(OBJS)
+	rm -f $(OBJS) $(LOCK_DIR)/$(OBJS) $(EVENT_DIR)/$(OBJS) $(EV_DIR)/$(OBJS)
 	rm -rf *.o 
 
