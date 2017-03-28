@@ -58,8 +58,8 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 {  
 	read_userdata *read_ud = (read_userdata *)w->data;
 	my_base *my_bs = read_ud->my_bs;
-	char *read_buf = NULL;
-	char *tmp_read_buf = (char *)malloc(BUFFER_SIZE/2);
+	char *read_buf = (char *)malloc(BUFFER_SIZE);
+	char *tmp_read_buf = (char *)malloc(BUFFER_SIZE);
 	char *write_buf = NULL;
 	char *tmp_write_buf = NULL;
 	int read_len = 0;
@@ -69,22 +69,27 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 	base_listenfd_list *cur_listen_nod = my_bs->listen_fd_list; 
 	bufread_cb_list *rd_buf_cb_nod= NULL;
 	read_handle_helper r_handler = NULL;
-	
+	log_output("start read\n\r");
 	if (tmp_read_buf == NULL)
 		handle_error("malloc");
 	while(true){
-		memset(tmp_read_buf, '0', BUFFER_SIZE/2);
-		tmp_read_len = read(w->fd, tmp_read_buf, BUFFER_SIZE/2);
+		memset(tmp_read_buf, '0', BUFFER_SIZE);
+		tmp_read_len = 0;
+		tmp_read_len = read(w->fd, tmp_read_buf, BUFFER_SIZE);
+		log_output("read looop %d\n\r", tmp_read_len);
 		if (tmp_read_len < 0 ){
 			free(tmp_read_buf);
+			tmp_read_buf = NULL;
+			perror("read looop\n\r");
 			if(errno == EAGAIN || errno == EWOULDBLOCK){
-				tmp_read_buf = NULL;				
-				goto fail;
+				log_output("read looop EWOULDBLOCK or EAGAIN\n\r");								
+				break;
 			}
-		       if (errno == EINTR)
+		       if (errno == EINTR){
+	                     log_output("read looop EINTR\n\r");
 			      continue;
-			else{
-				
+		       	}
+			else{				
 				handle_error("read");
 			}
 		}
@@ -95,7 +100,9 @@ void my_read_cb(EV_P, ev_io *w, int revents)
 		}
 		else{
 			read_buf = relloc_buf(read_buf, tmp_read_buf, read_len, tmp_read_len, '|');
+			log_output("old len %d, new len %d\n\r", read_len, read_len+tmp_read_len);			
 			read_len = read_len+tmp_read_len;
+
 		}
 	}
 	if(tmp_read_buf)
@@ -178,14 +185,23 @@ void my_accept_cb(EV_P, ev_io *w, int revents)
 		handle_error("read_userdata");  
 	}  
 	memset(read_ud, 0, sizeof(read_userdata));
+	log_output("start accept\n\r");
 	while (1) {
 		accept_fd = accept(w->fd, (struct sockaddr*)&ss, &slen); 
 		if (accept_fd == -1) {
-			if (errno == EINTR)
+			if (errno == EINTR){
+				log_output("accept intr\n\r");
 				continue;
-			else
+			}
+			else{
+				log_output("accept error\n\r");
 				break;
-		}	
+			}
+		}
+		else{
+			log_output("accept %d  ok\n\r", accept_fd);
+			break;
+		}		
 	}	
 	if (accept_fd < 0) {  		 
 		if (errno == EAGAIN || errno == EWOULDBLOCK){

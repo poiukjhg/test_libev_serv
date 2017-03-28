@@ -5,7 +5,7 @@
 #include<stdio.h>
 
 #define DEBUG
-#undef DEBUG
+//#undef DEBUG
 #define handle_error(msg)  \
 	do { \
 		perror(msg); \

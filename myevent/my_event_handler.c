@@ -153,9 +153,15 @@ void my_accept_cb(int listen_fd, short event, void *arg)
 		if (accept_fd == -1) {
 			if (errno == EINTR)
 				continue;
-			else
+			else{
+				log_output("accept error\n\r");
 				break;
-		}	
+			}
+		}
+		else{
+			log_output("accept %d  ok\n\r", accept_fd);
+			break;
+		}		
 	}	
 	if (accept_fd < 0) {  		 
 		if (errno == EAGAIN || errno == EWOULDBLOCK){
